@@ -18,5 +18,9 @@ const schemas = {
   payCoins: Joi.object({
     coins: Joi.number().required().min(1),
   }),
+  addCoins: Joi.object({
+    id: Joi.number().required(),
+    coins: Joi.number().required().min(1),
+  }),
 };
 export default schemas;

@@ -36,6 +36,11 @@ router.post(
   userController.payCoins
 );
 router.get("/get-coins", allowIfLoggedin, userController.getCoins);
+router.post(
+  "/add-coins",
+  validation(schemas.addCoins),
+  userController.addCoins
+);
 router.get("/", userController.users);
 
 export default router;

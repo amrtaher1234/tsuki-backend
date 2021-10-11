@@ -114,3 +114,16 @@ export const getCoins = async (
     next(err);
   }
 };
+export const addCoins = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    const { id, coins } = req.body;
+    await UserModel.findByIdAndUpdate(id, { $inc: { coins: coins as never } });
+    res.status(200).send({ message: "Successfully added coins" });
+  } catch (error) {
+    next(error);
+  }
+};
