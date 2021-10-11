@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import express from "express";
 import { UserModel } from "../database/user/user.model";
+import { IUser, IUserDocument } from "../database/user/user.types";
 async function hashPassword(password: string) {
   return await bcrypt.hash(password, 10);
 }
@@ -12,26 +13,24 @@ async function validatePassword(password: string, hashPassword) {
 export const users = async function (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction,
+  next: express.NextFunction
 ) {
-  console.log("users");
-  res.send({ users: await UserModel.find({}) });
-};
-export const user = async (req: express.Request, res: express.Response) => {
-  res.send({ user: await UserModel.findById(req.params.id) });
+  try {
+    res.send({ users: await UserModel.find({}) });
+  } catch (err) {
+    next(err);
+  }
 };
 export const signup = async function (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction,
+  next: express.NextFunction
 ) {
-  let errorMessage = "";
   try {
     const { email, password, name } = req.body;
     const user = await UserModel.findOne({ email: email });
     if (user) {
-      errorMessage = `Email ${email} already exists`;
-      throw new Error(errorMessage);
+      throw { message: `Email ${email} already exists`, status: 400 };
     }
     const hashedPassword = await hashPassword(password);
     const newUser = new UserModel({
@@ -44,63 +43,74 @@ export const signup = async function (
     });
     newUser.token = token;
     await newUser.save();
-    res.send({ data: newUser, token: token });
+    res.status(200).send(newUser.toJSON());
   } catch (error) {
-    res.status(404).send({ message: errorMessage, status: 404 });
+    next(error);
   }
 };
 
 export const login = async (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction,
+  next: express.NextFunction
 ) => {
-  let errorMessage = "";
   try {
     const { email, password } = req.body;
     const user = await UserModel.findOne({ email });
     if (!user) {
-      errorMessage = "Email not found";
-      throw new Error(errorMessage);
+      throw { message: "User Not Found", status: 404 };
     }
     const validPassword = await validatePassword(password, user.password);
-    console.log(validPassword);
     if (!validPassword) {
-      errorMessage = "Password not correct";
-      throw new Error(errorMessage);
+      throw { message: "Password incorrect", status: 400 };
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+      expiresIn: "7d",
     });
     await UserModel.findByIdAndUpdate(user._id, { token });
-    res.status(200).json({
-      data: {
-        email: user.email,
-        name: user.name,
-        _id: user._id,
-      },
-      token: token,
-    });
+    res.status(200).send(user.toJSON());
   } catch (error) {
-    res.status(404).send({ message: errorMessage, status: 404 });
+    next(error);
   }
 };
 
-export const addUserCoins = async (req: express.Request, res: express.Response) => {
-  const id = req.body.id;
-  const coins = Number(req.body.coins) as never;
+export const payCoins = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const coins = req.body.coins;
   try {
-    const user = await UserModel.findById(id);
+    const user = res.locals.loggedInUser as IUserDocument;
     if (!user) {
-      console.log("here");
-      throw Error(`User not found`);
+      throw { message: "User Not Found", status: 404 };
     }
-    await user.update({ $inc: { coins: coins } });
-    await user.save();
-    res
-      .status(200)
-      .send({ data: { ...user.toJSON(), coins: user.coins + coins }, status: 200 });
+    const newCoins = +user.coins - +coins;
+
+    if (newCoins < 0) {
+      throw { message: "Insufficient coins", status: 400 };
+    }
+    await (
+      await UserModel.findByIdAndUpdate(user._id, { coins: newCoins })
+    ).save();
+    res.status(200).send({
+      coins: newCoins,
+      status: 200,
+    });
   } catch (error) {
-    res.status(400).send({ error: error, status: 400 });
+    next(error);
+  }
+};
+export const getCoins = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  try {
+    const user = res.locals.loggedInUser as IUserDocument;
+    const coins = await UserModel.findById(user._id, { coins: 1, _id: 0 });
+    res.status(200).send({ coins: coins.coins, status: 200 });
+  } catch (err) {
+    next(err);
   }
 };

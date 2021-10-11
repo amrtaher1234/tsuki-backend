@@ -1,13 +1,19 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../database/user/user.model";
+import { allowIfLoggedin } from "../utils";
 import * as userController from "./../controllers/user.controller";
+import validation from "./../utils/validation";
+import schemas from "./../utils/validation-schemas";
 const router = express.Router();
 
 router.use(async (req, res, next) => {
   if (req.headers["x-access-token"]) {
     const token = req.headers["x-access-token"];
-    const { userId, exp } = jwt.verify(token as string, process.env.JWT_SECRET) as any;
+    const { userId, exp } = jwt.verify(
+      token as string,
+      process.env.JWT_SECRET
+    ) as any;
     if (exp < Date.now().valueOf() / 1000) {
       return res.status(401).json({
         error: "JWT token has expired, please login to obtain a new one",
@@ -21,9 +27,15 @@ router.use(async (req, res, next) => {
   }
 });
 
-router.post("/signup", userController.signup);
-router.post("/login", userController.login);
-router.post("/add-coins", userController.addUserCoins);
+router.post("/signup", validation(schemas.signup), userController.signup);
+router.post("/login", validation(schemas.login), userController.login);
+router.post(
+  "/pay-coins",
+  validation(schemas.payCoins),
+  allowIfLoggedin,
+  userController.payCoins
+);
+router.get("/get-coins", allowIfLoggedin, userController.getCoins);
 router.get("/", userController.users);
 
 export default router;
