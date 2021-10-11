@@ -2,11 +2,11 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import express from "express";
 import { UserModel } from "../database/user/user.model";
-import { IUser, IUserDocument } from "../database/user/user.types";
+import { IUserDocument } from "../database/user/user.types";
+
 async function hashPassword(password: string) {
   return await bcrypt.hash(password, 10);
 }
-
 async function validatePassword(password: string, hashPassword) {
   return await bcrypt.compare(password, hashPassword);
 }
@@ -48,7 +48,6 @@ export const signup = async function (
     next(error);
   }
 };
-
 export const login = async (
   req: express.Request,
   res: express.Response,
@@ -73,7 +72,6 @@ export const login = async (
     next(error);
   }
 };
-
 export const payCoins = async (
   req: express.Request,
   res: express.Response,
