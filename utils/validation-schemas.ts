@@ -10,16 +10,14 @@ const schemas = {
       .required()
       .min(5)
       .max(20)
-      .message(
-        "Should be a password of length min of 5 characters and max of 20"
-      ),
+      .message("Should be a password of length min of 5 characters and max of 20"),
     name: Joi.string().required(),
   }),
   payCoins: Joi.object({
     coins: Joi.number().required().min(1),
   }),
   addCoins: Joi.object({
-    id: Joi.number().required(),
+    id: Joi.string().required(),
     coins: Joi.number().required().min(1),
   }),
 };
