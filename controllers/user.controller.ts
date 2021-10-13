@@ -13,7 +13,7 @@ async function validatePassword(password: string, hashPassword) {
 export const users = async function (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) {
   try {
     res.send({ users: await UserModel.find({}) });
@@ -24,13 +24,13 @@ export const users = async function (
 export const signup = async function (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) {
   try {
     const { email, password, name } = req.body;
     const user = await UserModel.findOne({ email: email });
     if (user) {
-      throw { message: `Email ${email} already exists`, status: 400 };
+      throw { error: `Email ${email} already exists`, status: 409 };
     }
     const hashedPassword = await hashPassword(password);
     const newUser = new UserModel({
@@ -38,9 +38,7 @@ export const signup = async function (
       password: hashedPassword,
       name: name,
     });
-    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "20d",
-    });
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {});
     newUser.token = token;
     await newUser.save();
     res.status(200).send(newUser.toJSON());
@@ -51,17 +49,17 @@ export const signup = async function (
 export const login = async (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   try {
     const { email, password } = req.body;
     const user = await UserModel.findOne({ email });
     if (!user) {
-      throw { message: "User Not Found", status: 404 };
+      throw { error: "User Not Found", status: 404 };
     }
     const validPassword = await validatePassword(password, user.password);
     if (!validPassword) {
-      throw { message: "Password incorrect", status: 400 };
+      throw { error: "Password incorrect", status: 400 };
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -75,22 +73,20 @@ export const login = async (
 export const payCoins = async (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   const coins = req.body.coins;
   try {
     const user = res.locals.loggedInUser as IUserDocument;
     if (!user) {
-      throw { message: "User Not Found", status: 404 };
+      throw { error: "User Not Found", status: 404 };
     }
     const newCoins = +user.coins - +coins;
 
     if (newCoins < 0) {
-      throw { message: "Insufficient coins", status: 400 };
+      throw { error: "Insufficient coins", status: 400 };
     }
-    await (
-      await UserModel.findByIdAndUpdate(user._id, { coins: newCoins })
-    ).save();
+    await (await UserModel.findByIdAndUpdate(user._id, { coins: newCoins })).save();
     res.status(200).send({
       coins: newCoins,
       status: 200,
@@ -102,7 +98,7 @@ export const payCoins = async (
 export const getCoins = async (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   try {
     const user = res.locals.loggedInUser as IUserDocument;
@@ -115,7 +111,7 @@ export const getCoins = async (
 export const addCoins = async (
   req: express.Request,
   res: express.Response,
-  next: express.NextFunction
+  next: express.NextFunction,
 ) => {
   try {
     const { id, coins } = req.body;
